@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Applicord Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="extension-container">
+    <header class="header">
+      <div class="logo-wrapper">
+        <div class="logo-icon">AL</div>
+        <span class="logo-text">Applicord</span>
+      </div>
+      <span class="tagline">Job Command Center</span>
+    </header>
+
+    <div id="auth-section" class="section">
+      <p class="desc">Connect to your Applicord account to track jobs instantly.</p>
+      <input type="text" id="api-url" placeholder="API URL (default: http://localhost:5000)" value="http://localhost:5000">
+      <input type="email" id="email" placeholder="Email (demo@applylog.dev)">
+      <input type="password" id="password" placeholder="Password (Password123!)">
+      <button id="btn-login" class="btn btn-primary">Connect Account</button>
+      <div id="auth-error" class="error-msg"></div>
+    </div>
+
+    <div id="track-section" class="section hidden">
+      <div class="user-status">
+        <span id="user-badge" class="badge">Connected</span>
+        <button id="btn-logout" class="btn-text">Disconnect</button>
+      </div>
+
+      <div id="dup-warning" class="dup-alert hidden">
+        ⚠️ You are already tracking this role: <strong id="dup-company"></strong>.
+      </div>
+
+      <form id="track-form">
+        <div class="form-group">
+          <label>Company</label>
+          <input type="text" id="company" required placeholder="e.g. Microsoft">
+        </div>
+        <div class="form-group">
+          <label>Job Title</label>
+          <input type="text" id="jobTitle" required placeholder="e.g. Software Engineer">
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="location" placeholder="e.g. Remote / New York">
+        </div>
+        <div class="form-group">
+          <label>Work Mode</label>
+          <select id="workMode">
+            <option value="REMOTE">Remote</option>
+            <option value="HYBRID" selected>Hybrid</option>
+            <option value="ONSITE">Onsite</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="currentStatus">
+            <option value="APPLIED" selected>Applied</option>
+            <option value="SAVED">Saved</option>
+          </select>
+        </div>
+
+        <button type="submit" id="btn-track" class="btn btn-primary btn-block">Track in Applicord</button>
+      </form>
+      <div id="success-msg" class="success-msg hidden">✓ Application saved to Applicord timeline!</div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

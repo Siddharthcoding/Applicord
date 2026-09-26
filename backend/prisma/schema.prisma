@@ -1,0 +1,418 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+  TEMPORARY
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  VIEWED
+  ASSESSMENT
+  INTERVIEW
+  OFFER
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum HistorySource {
+  MANUAL
+  EMAIL
+  BROWSER_EXTENSION
+  IMPORT
+  SYSTEM
+}
+
+enum ReminderType {
+  FOLLOW_UP
+  STATUS_CHECK
+  INTERVIEW_PREP
+  CUSTOM
+}
+
+enum ReminderStatus {
+  PENDING
+  COMPLETED
+  DISMISSED
+  OVERDUE
+}
+
+enum DocumentCategory {
+  RESUME
+  COVER_LETTER
+  OFFER_LETTER
+  APPLICATION_PDF
+  ASSESSMENT_SUBMISSION
+  PORTFOLIO
+  OTHER
+}
+
+enum EmailClassification {
+  APPLICATION_CONFIRMATION
+  APPLICATION_VIEWED
+  ASSESSMENT
+  INTERVIEW
+  OFFER
+  REJECTION
+  RECRUITER_CONTACT
+  IRRELEVANT
+}
+
+enum SuggestionType {
+  STATUS_UPDATE
+  NEW_APPLICATION_DETECTED
+  FOLLOW_UP_DUE
+  INTERVIEW_DETECTED
+  REJECTION_DETECTED
+}
+
+enum SuggestionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model User {
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  passwordHash          String
+  name                  String
+  timezone              String                 @default("UTC")
+  resetPasswordToken    String?
+  resetPasswordExpires  DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  settings              UserSettings?
+  applications          Application[]
+  reminders             Reminder[]
+  contacts              Contact[]
+  documents             Document[]
+  notifications         Notification[]
+  auditLogs             AuditLog[]
+  tags                  Tag[]
+  emailIntegrations     EmailIntegration[]
+  automationSuggestions AutomationSuggestion[]
+
+  @@index([resetPasswordToken])
+  @@map("users")
+}
+
+model UserSettings {
+  id                         String   @id @default(uuid())
+  userId                     String   @unique
+  emailDetection             Boolean  @default(true)
+  autoStatusSuggestions      Boolean  @default(true)
+  autoRejectionUpdates       Boolean  @default(false)
+  autoInterviewUpdates       Boolean  @default(true)
+  autoFollowUpReminders      Boolean  @default(true)
+  followUpDays               Int      @default(7)
+  highConfidenceAutoUpdate   Boolean  @default(false)
+  confidenceThreshold        Float    @default(0.85)
+  emailNotifications         Boolean  @default(false)
+  inAppNotifications         Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model Company {
+  id           String        @id @default(uuid())
+  name         String        @unique
+  website      String?
+  logoUrl      String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  applications Application[]
+  contacts     Contact[]
+
+  @@map("companies")
+}
+
+model Application {
+  id             String                   @id @default(uuid())
+  publicId       String                   @unique // e.g. APP-000001
+  userId         String
+  companyId      String
+  jobTitle       String
+  jobId          String?
+  jobUrl         String?
+  location       String?
+  workMode       WorkMode                 @default(HYBRID)
+  employmentType EmploymentType           @default(FULL_TIME)
+  source         String                   @default("LINKEDIN") // LINKEDIN, COMPANY_WEBSITE, INDEED, REFERRAL, etc.
+  appliedAt      DateTime                 @default(now())
+  currentStatus  ApplicationStatus        @default(APPLIED)
+  priority       Priority                 @default(MEDIUM)
+  salary         String?
+  notes          String?
+  isArchived     Boolean                  @default(false)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company        Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  statusHistory  ApplicationStatusHistory[]
+  reminders      Reminder[]
+  contacts       Contact[]
+  documents      Document[]
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+  tags           ApplicationTag[]
+  suggestions    AutomationSuggestion[]
+  processedEmails ProcessedEmail[]
+
+  @@index([userId])
+  @@index([currentStatus])
+  @@index([appliedAt])
+  @@index([companyId])
+  @@index([isArchived])
+  @@index([userId, currentStatus])
+  @@map("applications")
+}
+
+model ApplicationStatusHistory {
+  id            String            @id @default(uuid())
+  applicationId String
+  status        ApplicationStatus
+  timestamp     DateTime          @default(now())
+  source        HistorySource     @default(MANUAL)
+  note          String?
+  metadata      Json?             // { reason, emailId, previousStatus, confidence, correctionInfo, ... }
+  createdByUserId String?
+  createdAt     DateTime          @default(now())
+
+  application   Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@index([timestamp])
+  @@map("application_status_history")
+}
+
+model Reminder {
+  id            String         @id @default(uuid())
+  userId        String
+  applicationId String?
+  type          ReminderType   @default(FOLLOW_UP)
+  title         String
+  description   String?
+  dueAt         DateTime
+  status        ReminderStatus @default(PENDING)
+  completedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application   Application?   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([dueAt])
+  @@index([status])
+  @@index([userId, status])
+  @@map("reminders")
+}
+
+model Contact {
+  id              String       @id @default(uuid())
+  userId          String
+  applicationId   String?
+  companyId       String?
+  name            String
+  role            String?
+  email           String?
+  phone           String?
+  linkedIn        String?
+  notes           String?
+  lastContactDate DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application     Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  company         Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([applicationId])
+  @@map("contacts")
+}
+
+model Document {
+  id               String           @id @default(uuid())
+  userId           String
+  applicationId    String
+  name             String
+  fileKey          String
+  fileUrl          String
+  fileType         String
+  fileSize         Int
+  documentCategory DocumentCategory @default(RESUME)
+  createdAt        DateTime         @default(now())
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application      Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([applicationId])
+  @@map("documents")
+}
+
+model Notification {
+  id            String       @id @default(uuid())
+  userId        String
+  applicationId String?
+  type          String       // REMINDER, STATUS_UPDATE, EMAIL_DETECTED, DUPLICATE_WARNING, SYSTEM
+  title         String
+  message       String
+  link          String?
+  readAt        DateTime?
+  metadata      Json?
+  createdAt     DateTime     @default(now())
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id            String       @id @default(uuid())
+  userId        String
+  applicationId String?
+  eventType     String       // APPLICATION_CREATED, STATUS_CHANGED, REMINDER_CREATED, REMINDER_COMPLETED, CONTACT_ADDED, DOCUMENT_UPLOADED, DOCUMENT_DELETED, EMAIL_CONNECTED, AUTOMATION_ACCEPTED, AUTOMATION_REJECTED, STATUS_CORRECTED
+  payload       Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime     @default(now())
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([applicationId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Tag {
+  id           String           @id @default(uuid())
+  userId       String
+  name         String
+  color        String           @default("#4F46E5")
+  createdAt    DateTime         @default(now())
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications ApplicationTag[]
+
+  @@unique([userId, name])
+  @@map("tags")
+}
+
+model ApplicationTag {
+  applicationId String
+  tagId         String
+
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([applicationId, tagId])
+  @@map("application_tags")
+}
+
+model EmailIntegration {
+  id                   String           @id @default(uuid())
+  userId               String
+  provider             String           @default("SIMULATED_INBOX") // GMAIL, OUTLOOK, IMAP, SIMULATED_INBOX
+  providerAccountId    String
+  encryptedAccessToken String?
+  encryptedRefreshToken String?
+  tokenExpiry          DateTime?
+  lastSyncAt           DateTime?
+  syncStatus           String           @default("IDLE") // IDLE, SYNCING, ERROR, SUCCESS
+  isEnabled            Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user                 User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  processedEmails      ProcessedEmail[]
+
+  @@unique([userId, provider, providerAccountId])
+  @@map("email_integrations")
+}
+
+model ProcessedEmail {
+  id                  String              @id @default(uuid())
+  integrationId       String
+  providerMessageId   String
+  threadId            String?
+  sender              String
+  subject             String
+  snippet             String
+  body                String?             // Full email body text, stored for display in suggestion review
+  classification      EmailClassification @default(IRRELEVANT)
+  confidence          Float               @default(0.0)
+  receivedAt          DateTime            @default(now())
+  processedAt         DateTime            @default(now())
+  linkedApplicationId String?
+
+  integration         EmailIntegration    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  linkedApplication   Application?        @relation(fields: [linkedApplicationId], references: [id], onDelete: SetNull)
+
+  @@unique([integrationId, providerMessageId])
+  @@index([linkedApplicationId])
+  @@map("processed_emails")
+}
+
+model AutomationSuggestion {
+  id            String           @id @default(uuid())
+  userId        String
+  applicationId String?
+  type          SuggestionType   @default(STATUS_UPDATE)
+  confidence    Float            @default(0.8)
+  payload       Json             // { detectedCompany, detectedRole, detectedStatus, emailSubject, emailDate, snippet, reason }
+  status        SuggestionStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  resolvedAt    DateTime?
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application   Application?     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("automation_suggestions")
+}
