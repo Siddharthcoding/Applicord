@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Circle, Command, Mail, MoveRight, Sparkles } from 'lucide-react';
 
 const stories = [
-  { eyebrow: '01 / INBOX INTELLIGENCE', title: 'Signals, not noise.', body: 'Connect Gmail and let Applicord surface application confirmations, interviews, assessments, and offers for your review.', type: 'inbox' },
-  { eyebrow: '02 / YOUR PIPELINE', title: 'Every move, visible.', body: 'Track roles from saved to offer in one clear timeline—then see exactly what deserves your attention next.', type: 'focus' },
-  { eyebrow: '03 / FOLLOW-THROUGH', title: 'Never lose the thread.', body: 'Set thoughtful reminders, keep recruiter context close, and follow up before a promising opportunity goes cold.', type: 'momentum' },
+  { eyebrow: '01 / GMAIL SIGNALS', title: 'Your inbox, organized.', body: 'Connect Gmail with read-only access. Applicord detects application confirmations, interview invitations, assessments, offers, and rejections—then lets you review each suggestion.', type: 'inbox' },
+  { eyebrow: '02 / APPLICATION TIMELINE', title: 'Every update, connected.', body: 'Keep every role, status change, recruiter detail, document, and email signal together in a complete application timeline.', type: 'focus' },
+  { eyebrow: '03 / SMART FOLLOW-UPS', title: 'The right nudge, on time.', body: 'Create follow-up reminders, see due tasks in your calendar, and keep promising conversations moving without another spreadsheet.', type: 'momentum' },
 ];
 
 export const LandingPage: React.FC = () => {
@@ -36,7 +36,7 @@ export const LandingPage: React.FC = () => {
 
       <section className="kinetic-hero">
         <div className="hero-star hero-star-one">✦</div><div className="hero-star hero-star-two">✳</div>
-        <p className="hero-kicker"><span className="live-dot" /> THE CAREER OPERATING SYSTEM FOR PEOPLE GOING PLACES</p>
+        <p className="hero-kicker"><span className="live-dot" /> YOUR APPLICATIONS. ONE CLEAR NEXT MOVE.</p>
         <h1>
           <span className="hero-line">Make your</span>
           <span className="hero-line hero-line-indent">next move</span>
@@ -54,7 +54,7 @@ export const LandingPage: React.FC = () => {
       </section>
 
       <section id="experience" className="experience-section">
-        <div className="experience-heading"><div><p className="section-index">( 02 — THE EXPERIENCE )</p><h2>Meet your<br /><i>momentum.</i></h2></div><p className="experience-intro">A living system that moves at the speed of your ambition. Swipe through what it feels like.</p></div>
+        <div className="experience-heading"><div><p className="section-index">( 02 — HOW APPLICORD WORKS )</p><h2>One search.<br /><i>In sync.</i></h2></div><p className="experience-intro">Applicord brings your inbox, application pipeline, recruiter details, reminders, and career decisions into one clear workspace. Swipe to explore the flow.</p></div>
         <div className="rail-controls"><button onClick={() => slide(-1)} aria-label="Previous story"><ChevronLeft /></button><span>0{active + 1} / 0{stories.length}</span><button onClick={() => slide(1)} aria-label="Next story"><ChevronRight /></button></div>
         <div ref={railRef} className="story-rail" onScroll={(e) => setActive(Math.min(stories.length - 1, Math.round(e.currentTarget.scrollLeft / 440)))}>
           {stories.map((story, index) => <article className={`story-panel story-${story.type}`} key={story.title}><p className="story-eyebrow">{story.eyebrow}</p><div className="story-visual"><StoryVisual type={story.type} /></div><div className="story-text"><h3>{story.title}</h3><p>{story.body}</p><span className="story-number">0{index + 1}</span></div></article>)}
@@ -73,7 +73,7 @@ export const LandingPage: React.FC = () => {
 };
 
 const StoryVisual: React.FC<{ type: string }> = ({ type }) => {
-  if (type === 'inbox') return <div className="visual-mail"><div className="mail-header"><span><Mail size={15} /> inbox / today</span><Circle size={10} fill="currentColor" /></div><div className="mail-item hot"><b>Figma Recruiting</b><span>We'd love to meet you</span><i>NOW</i></div><div className="mail-item"><b>Newsletter</b><span>Things worth reading</span></div><div className="mail-item"><b>Calendar</b><span>Your week ahead</span></div><div className="mail-match"><Sparkles size={15} /> MATCHED TO<br /><strong>PRODUCT DESIGNER</strong></div></div>;
-  if (type === 'focus') return <div className="visual-focus"><p>THIS WEEK</p><strong>03</strong><span>conversations<br />worth having</span><div className="focus-bars"><i /><i /><i /><i /></div><div className="focus-label">YOUR ENERGY IS GOING<br />IN THE RIGHT DIRECTION ↗</div></div>;
-  return <div className="visual-momentum"><div className="momentum-path"><i /><i /><i /><i /></div><div className="momentum-card"><span>FRIDAY · 10:00</span><b>Follow up with<br />the team at Linear</b><em>ONE SMALL MOVE →</em></div><div className="momentum-dot" /></div>;
+  if (type === 'inbox') return <div className="visual-mail"><div className="mail-header"><span><Mail size={15} /> gmail / new signal</span><Circle size={10} fill="currentColor" /></div><div className="mail-item hot"><b>Figma Recruiting</b><span>Your interview invitation</span><i>REVIEW</i></div><div className="mail-item"><b>Application confirmation</b><span>Thanks for applying</span></div><div className="mail-item"><b>Newsletter</b><span>Not an application signal</span></div><div className="mail-match"><Sparkles size={15} /> SUGGESTED UPDATE<br /><strong>INTERVIEW</strong></div></div>;
+  if (type === 'focus') return <div className="visual-focus"><p>ACTIVE PIPELINE</p><strong>12</strong><span>roles tracked<br />in one view</span><div className="focus-bars"><i /><i /><i /><i /></div><div className="focus-label">SAVED → APPLIED → INTERVIEW<br />→ OFFER</div></div>;
+  return <div className="visual-momentum"><div className="momentum-path"><i /><i /><i /><i /></div><div className="momentum-card"><span>FRIDAY · 10:00</span><b>Follow up with<br />the team at Linear</b><em>REMINDER DUE →</em></div><div className="momentum-dot" /></div>;
 };

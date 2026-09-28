@@ -72,8 +72,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               ✦
             </div>
             <div>
-              <span className="font-semibold text-xs tracking-tight text-white">Applicord</span>
-              <span className="block text-[10px] text-[#636B78] font-mono -mt-0.5">MOVE WITH INTENTION</span>
+              <span className="sidebar-wordmark font-semibold text-xs tracking-tight text-white">Applicord</span>
+              <span className="sidebar-tagline block text-[10px] text-[#636B78] font-mono -mt-0.5">YOUR JOB SEARCH, ORGANIZED</span>
             </div>
           </Link>
           <button
