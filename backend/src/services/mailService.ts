@@ -30,7 +30,28 @@ class MailService {
   private initTransporter() {
     const isTest = config.nodeEnv === 'test' || process.env.VITEST === 'true';
 
-    if (config.smtpHost && config.smtpUser && !isTest) {
+    const hasGmailOAuth = Boolean(
+      config.smtpUser &&
+      config.mailOauthClientId &&
+      config.mailOauthClientSecret &&
+      config.mailOauthRefreshToken
+    );
+
+    if (hasGmailOAuth && !isTest) {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          type: 'OAuth2',
+          user: config.smtpUser,
+          clientId: config.mailOauthClientId,
+          clientSecret: config.mailOauthClientSecret,
+          refreshToken: config.mailOauthRefreshToken,
+        },
+      });
+      logger.info('[MailService] Configured with Gmail OAuth2 transport', {
+        user: config.smtpUser,
+      });
+    } else if (config.smtpHost && config.smtpUser && !isTest) {
       this.transporter = nodemailer.createTransport({
         host: config.smtpHost,
         port: config.smtpPort,
@@ -52,7 +73,7 @@ class MailService {
       this.transporter = nodemailer.createTransport({
         jsonTransport: true,
       });
-      logger.info('[MailService] SMTP not fully configured in env; running in mock/log mode.');
+      logger.info('[MailService] Mail transport not fully configured in env; running in mock/log mode.');
     }
   }
 
@@ -66,8 +87,13 @@ class MailService {
       }
 
       const mailOptions: SendMailOptions = {
-        from: options.from || config.smtpFrom,
         ...options,
+        from: options.from || config.smtpFrom,
+        replyTo: options.replyTo || config.smtpUser || undefined,
+        headers: {
+          'X-Entity-Ref-ID': `applicord-${Date.now()}`,
+          ...options.headers,
+        },
       };
 
       const info = await this.transporter!.sendMail(mailOptions);

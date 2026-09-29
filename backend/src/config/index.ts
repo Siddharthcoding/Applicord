@@ -23,5 +23,8 @@ export const config = {
   smtpSecure: process.env.SMTP_SECURE === 'true',
   smtpUser: process.env.SMTP_USER || '',
   smtpPass: process.env.SMTP_PASS || '',
+  mailOauthClientId: process.env.MAIL_OAUTH_CLIENT_ID || '',
+  mailOauthClientSecret: process.env.MAIL_OAUTH_CLIENT_SECRET || '',
+  mailOauthRefreshToken: process.env.MAIL_OAUTH_REFRESH_TOKEN || '',
   smtpFrom: process.env.SMTP_FROM || process.env.EMAIL_FROM || '"Applicord" <no-reply@applicord.app>',
 };

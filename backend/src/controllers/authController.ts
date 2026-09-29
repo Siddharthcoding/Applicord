@@ -10,6 +10,25 @@ import {
 } from '../validators';
 import { sendSuccess } from '../utils/response';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { config } from '../config';
+
+const getTrustedFrontendOrigin = (req: Request): string => {
+  const origin = req.get('origin');
+  if (!origin) return config.frontendUrl;
+
+  try {
+    const url = new URL(origin);
+    const isLocalhost = /^(localhost|127\.0\.0\.1)$/.test(url.hostname);
+    const isConfiguredFrontend = url.origin === config.frontendUrl;
+    if (url.protocol.match(/^https?:$/) && (isConfiguredFrontend || (config.nodeEnv !== 'production' && isLocalhost))) {
+      return url.origin;
+    }
+  } catch {
+    // Fall back to the configured frontend URL for malformed origins.
+  }
+
+  return config.frontendUrl;
+};
 
 export const authController = {
   async register(req: Request, res: Response, next: NextFunction) {
@@ -76,7 +95,7 @@ export const authController = {
   async forgotPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const validated = forgotPasswordSchema.parse(req.body);
-      const result = await authService.forgotPassword(validated.email);
+      const result = await authService.forgotPassword(validated.email, getTrustedFrontendOrigin(req));
       return sendSuccess(res, result, result.message);
     } catch (err) {
       next(err);

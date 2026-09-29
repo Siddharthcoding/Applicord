@@ -202,7 +202,7 @@ export const authService = {
     return { success: true };
   },
 
-  async forgotPassword(email: string) {
+  async forgotPassword(email: string, frontendOrigin = config.frontendUrl) {
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -231,17 +231,22 @@ export const authService = {
       payload: { email: user.email },
     });
 
-    const resetUrl = `${config.frontendUrl}/reset-password?token=${resetToken}`;
-    logger.info(`[Auth] Password reset token generated for ${user.email}: ${resetToken}`);
+    const resetUrl = `${frontendOrigin.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
+    logger.info('[Auth] Password reset token generated', { email: user.email });
 
     // Send email asynchronously via Nodemailer
     try {
-      await mailService.sendPasswordResetEmail({
+      const emailSent = await mailService.sendPasswordResetEmail({
         to: user.email,
         name: user.name,
         resetUrl,
         expiresMinutes: 60,
       });
+      if (!emailSent) {
+        logger.error('[Auth] Password reset email delivery was not accepted by the mail transport', undefined, {
+          email: user.email,
+        });
+      }
     } catch (mailErr: any) {
       logger.error('[Auth] Failed to dispatch password reset email', mailErr, { email: user.email });
     }
