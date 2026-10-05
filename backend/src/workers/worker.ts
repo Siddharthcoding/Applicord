@@ -2,9 +2,13 @@ import { initQueues } from './queue';
 import { processDueReminders } from './reminderWorker';
 import { processEmailSync } from './emailWorker';
 import { logger } from '../utils/logger';
+import { redisReady } from '../config/redis';
 
-export const startWorker = () => {
+export const startWorker = async () => {
   logger.info('[Worker] Starting background worker service...');
+
+  // Wait for Redis connection attempt to settle before deciding on BullMQ vs in-process
+  await redisReady;
   initQueues();
 
   // Run initial checks with a brief delay so HTTP server starts instantly without delay
