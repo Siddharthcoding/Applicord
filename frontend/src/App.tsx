@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Layout } from './components/layout/Layout';
 import { LandingPage } from './pages/LandingPage';
@@ -136,6 +137,7 @@ export const App: React.FC = () => {
           {/* Fallback */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        <Analytics />
       </BrowserRouter>
     </AuthProvider>
     </ThemeProvider>
