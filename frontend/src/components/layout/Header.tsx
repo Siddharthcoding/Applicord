@@ -1,8 +1,9 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Plus, Sparkles, Menu, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Search, Plus, Sparkles, Menu, Moon, Sun } from 'lucide-react';
 import { NotificationDropdown } from '../common/NotificationDropdown';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
 
 interface HeaderProps {
   onOpenCommandPalette: () => void;
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleSidebar,
 }) => {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   return (
@@ -56,13 +58,24 @@ export const Header: React.FC<HeaderProps> = ({
 
         <button
           onClick={onOpenAddModal}
-          className="btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs"
+          className="header-add-application btn-primary flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs"
         >
           <Plus size={14} />
           <span className="hidden sm:inline">Add Application</span>
         </button>
 
         <NotificationDropdown />
+
+        <button
+          onClick={toggleTheme}
+          className="theme-toggle"
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          title={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+        >
+          <Sun size={14} className="theme-sun" />
+          <Moon size={14} className="theme-moon" />
+          <span className="theme-toggle-knob" />
+        </button>
 
         {/* User avatar */}
         <div className="flex items-center gap-1.5 pl-2 border-l border-[#1C1F26]">

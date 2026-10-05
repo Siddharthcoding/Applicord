@@ -165,7 +165,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="sidebar-footer p-3 border-t border-[#1C1F26] bg-[#0A0B0E] space-y-1.5">
           <Link
             to="/landing"
-            className="flex items-center justify-between px-2.5 py-1.5 rounded text-[11px] text-[#9CA3AF] hover:text-white hover:bg-[#14161C] transition-colors"
+            className="sidebar-footer-link flex items-center justify-between px-2.5 py-1.5 rounded text-[11px] text-[#9CA3AF] hover:text-white hover:bg-[#14161C] transition-colors"
           >
             <div className="flex items-center gap-2">
               <Compass size={13} className="text-[#636B78]" />
@@ -178,9 +178,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             to="/settings"
             onClick={onClose}
             className={({ isActive }) =>
-              `flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors ${
+              `sidebar-footer-link flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors ${
                 isActive
-                  ? 'bg-[#181B20] text-white font-medium'
+                  ? 'sidebar-footer-link-active bg-[#181B20] text-white font-medium'
                   : 'text-[#9CA3AF] hover:text-white hover:bg-[#14161C]'
               }`
             }

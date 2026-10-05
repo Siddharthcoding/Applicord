@@ -67,7 +67,7 @@ export const LandingPage: React.FC = () => {
 
       <section className="finale"><div className="finale-sun" /><p className="section-index">( 04 — YOUR TURN )</p><h2>Your next chapter<br /><i>is calling.</i></h2><p>Bring order to the pursuit. Make space for the possibility.</p><button onClick={cta} className="finale-button">{user ? 'GO TO MY WORKSPACE' : 'CREATE MY APPLICORD'} <ArrowRight size={17} /></button><span className="finale-note"><Mail size={13} /> Read-only inbox connection. Always in your control.</span></section>
 
-      <footer className="kinetic-footer"><Link to="/" className="brand-mark"><span>✦</span> APPLICORD</Link><span>MOVE WITH INTENTION © {new Date().getFullYear()}</span><div><Link to="/login">LOG IN</Link><Link to="/register">GET STARTED</Link></div></footer>
+      <footer className="kinetic-footer"><Link to="/" className="brand-mark"><span>✦</span> APPLICORD</Link><span>MOVE WITH INTENTION © {new Date().getFullYear()}</span><div><Link to="/privacy">PRIVACY</Link><Link to="/terms">TERMS</Link><Link to="/login">LOG IN</Link><Link to="/register">GET STARTED</Link></div></footer>
     </main>
   );
 };

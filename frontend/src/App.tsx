@@ -18,6 +18,8 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { ThemeProvider } from './context/ThemeContext';
+import { NotFoundPage, PrivacyPage, TermsPage } from './pages/PublicInfoPages';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
@@ -65,6 +67,7 @@ const RootRedirect: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -73,6 +76,8 @@ export const App: React.FC = () => {
 
           {/* Public Landing Page — accessible by everyone */}
           <Route path="/landing" element={<LandingPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
 
           {/* Public Auth Routes — redirect to dashboard if already logged in */}
           <Route
@@ -129,9 +134,10 @@ export const App: React.FC = () => {
           </Route>
 
           {/* Fallback */}
-          <Route path="*" element={<Navigate to="/landing" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ThemeProvider>
   );
 };

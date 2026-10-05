@@ -376,7 +376,7 @@ export const AutomationPage: React.FC = () => {
               <button
                 onClick={handleSyncAll}
                 disabled={isSyncingAll || syncingIntegrationId !== null}
-                className="btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-50"
+                className="automation-sync-all btn-secondary flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold disabled:opacity-50"
               >
                 <RefreshCw size={12} className={isSyncingAll ? 'animate-spin' : ''} />
                 <span>{isSyncingAll ? 'Syncing All Inboxes...' : 'Sync All Inboxes'}</span>
@@ -386,7 +386,7 @@ export const AutomationPage: React.FC = () => {
             <button
               onClick={handleConnectGmail}
               disabled={isConnectingGoogle}
-              className="btn-primary flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold disabled:opacity-50"
+              className="automation-add-gmail btn-primary flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-semibold disabled:opacity-50"
             >
               <Plus size={13} />
               <span>{gmailIntegrations.length > 0 ? 'Add Another Gmail Account' : 'Connect Gmail Account'}</span>
@@ -428,7 +428,7 @@ export const AutomationPage: React.FC = () => {
                     <button
                       onClick={() => handleSyncIntegration(account.id)}
                       disabled={isSyncingThis || isSyncingAll}
-                      className="btn-secondary flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium disabled:opacity-50"
+                      className="automation-sync-now btn-secondary flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium disabled:opacity-50"
                       title="Scan this inbox now"
                     >
                       <RefreshCw size={12} className={isSyncingThis ? 'animate-spin' : ''} />
