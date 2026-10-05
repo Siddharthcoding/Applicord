@@ -20,7 +20,10 @@ export const createApp = () => {
     })
   );
 
-  const allowedOrigins = [config.frontendUrl];
+  const configuredOrigins = config.frontendUrl
+    .split(',')
+    .map((url) => url.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
 
   app.use(
     cors({
@@ -28,14 +31,18 @@ export const createApp = () => {
         // Allow server-to-server or non-browser requests
         if (!origin) return callback(null, true);
 
+        const cleanOrigin = origin.replace(/\/+$/, '');
+
         // Allow any localhost / 127.0.0.1 port (e.g. 5173, 5174, etc.)
-        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-        // Allow configured origin
-        const isAllowedConfig = allowedOrigins.includes(origin);
+        const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin);
+        // Allow configured origin(s)
+        const isAllowedConfig = configuredOrigins.includes(cleanOrigin);
+        // Allow Vercel preview and production domains
+        const isVercel = /^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(cleanOrigin);
         // Allow Chrome or Firefox extensions
         const isExtension = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://');
 
-        if (isLocalhost || isAllowedConfig || isExtension) {
+        if (isLocalhost || isAllowedConfig || isVercel || isExtension) {
           return callback(null, true);
         }
 
@@ -43,7 +50,7 @@ export const createApp = () => {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     })
   );
 
