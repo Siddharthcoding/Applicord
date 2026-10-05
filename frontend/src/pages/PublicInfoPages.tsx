@@ -5,12 +5,12 @@ import { Link } from 'react-router-dom';
 type Section = { title: string; body: string };
 
 const privacySections: Section[] = [
-  { title: 'The short version', body: 'Applicord helps you organize your job search. We collect only what is needed to provide that workspace, and we do not sell your personal information.' },
-  { title: 'Information you share', body: 'This includes account details, application records, recruiter contact details, documents you choose to upload, and preferences you save.' },
-  { title: 'Connected inboxes', body: 'If you connect Gmail, Applicord uses the permissions you approve to identify relevant application signals. Your connection is read-only. We do not send messages from your inbox or alter its contents.' },
-  { title: 'How we use information', body: 'We use your information to operate your account, organize your applications and reminders, secure the service, respond to support requests, and improve Applicord.' },
-  { title: 'Your choices', body: 'You can update your profile, remove connected accounts, export selected data, or ask us to delete your account. Some information may be retained where required for security, legal, or operational reasons.' },
-  { title: 'Security and changes', body: 'We use reasonable safeguards, but no online service is completely risk-free. We may update this policy as Applicord evolves; the effective date will reflect the latest version.' },
+  { title: 'Overview & Ownership', body: 'Applicord helps you track and organize your job search at https://applicord.vercel.app. We collect only what is strictly necessary to provide the workspace, and we never sell your personal information.' },
+  { title: 'Information You Share', body: 'This includes account details (name, email, password hash, timezone), application records, recruiter contacts, documents you upload (resumes, cover letters), and user preferences.' },
+  { title: 'Google User Data (Gmail Integration)', body: 'When you link your Google account, Applicord requests read-only access (https://www.googleapis.com/auth/gmail.readonly) solely to detect job applications, interview invitations, assessments, and status updates. We access email metadata and relevant snippets. We do not compose, send, alter, or delete emails.' },
+  { title: 'Google Limited Use Policy Compliance', body: "Applicord's use and transfer to any other app of information received from Google APIs will adhere to Google API Services User Data Policy, including the Limited Use requirements. We do not use Google user data for advertising, do not sell data to third parties or brokers, and do not use user emails to train generalized AI or ML models." },
+  { title: 'Human Access & Security', body: 'No human reads your emails unless you give explicit written permission for technical support, for security investigations, or as required by law. All tokens are encrypted at rest with AES-256-GCM, and communications use encrypted TLS.' },
+  { title: 'Retention & Account Deletion', body: 'You can disconnect Gmail at any time from Settings to immediately erase stored OAuth tokens, or revoke access via Google Security Settings. You can request permanent account and data deletion anytime by emailing ssworkstech@gmail.com.' },
 ];
 
 const termsSections: Section[] = [
