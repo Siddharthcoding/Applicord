@@ -78,10 +78,91 @@ class MailService {
   }
 
   /**
-   * Send a raw email using the configured transporter.
+   * Send an email via the Gmail HTTPS REST API using the pre-configured OAuth credentials.
+   * This sends over HTTPS (port 443) and completely bypasses cloud SMTP port blocks (e.g. Render blocking 465/587).
+   */
+  private async sendViaGmailRestApi(options: SendMailOptions): Promise<boolean> {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.mailOauthClientId,
+        client_secret: config.mailOauthClientSecret,
+        refresh_token: config.mailOauthRefreshToken,
+        grant_type: 'refresh_token',
+      }),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok || !tokenData.access_token) {
+      throw new Error(`Failed to refresh Gmail OAuth token: ${tokenData.error_description || tokenData.error || 'Unknown error'}`);
+    }
+
+    const from = options.from || config.smtpFrom;
+    const to = Array.isArray(options.to) ? options.to.join(', ') : (options.to as string);
+    const subject = options.subject || '';
+    const body = options.html || options.text || '';
+    const isHtml = Boolean(options.html);
+
+    const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+    const messageParts = [
+      `From: ${from}`,
+      `To: ${to}`,
+      `Subject: ${utf8Subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: ${isHtml ? 'text/html; charset=utf-8' : 'text/plain; charset=utf-8'}`,
+      `Content-Transfer-Encoding: base64`,
+      `X-Entity-Ref-ID: applicord-${Date.now()}`,
+      '',
+      Buffer.from(body as string).toString('base64'),
+    ];
+
+    const raw = Buffer.from(messageParts.join('\r\n')).toString('base64url');
+
+    const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw }),
+    });
+
+    const sendData = await sendRes.json();
+    if (!sendRes.ok) {
+      throw new Error(`Gmail API send failed: ${sendData.error?.message || JSON.stringify(sendData)}`);
+    }
+
+    logger.info('[MailService] Email sent successfully via Gmail HTTPS API', {
+      to: options.to,
+      subject: options.subject,
+      messageId: sendData.id,
+    });
+
+    return true;
+  }
+
+  /**
+   * Send a raw email using the configured transporter or Gmail HTTPS REST API.
    */
   async sendMail(options: SendMailOptions): Promise<boolean> {
     try {
+      const hasGmailOAuth = Boolean(
+        config.smtpUser &&
+        config.mailOauthClientId &&
+        config.mailOauthClientSecret &&
+        config.mailOauthRefreshToken
+      );
+
+      // Prioritize Gmail HTTPS API over SMTP to bypass cloud host port 465/587 blocks
+      if (hasGmailOAuth) {
+        try {
+          return await this.sendViaGmailRestApi(options);
+        } catch (apiErr: any) {
+          logger.warn('[MailService] Gmail HTTPS API send failed, trying SMTP fallback', { error: apiErr.message });
+        }
+      }
+
       if (!this.transporter) {
         this.initTransporter();
       }
