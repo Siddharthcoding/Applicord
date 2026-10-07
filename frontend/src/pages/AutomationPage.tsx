@@ -249,6 +249,18 @@ export const AutomationPage: React.FC = () => {
     targetApplicationId?: string,
     overrides?: Partial<SuggestionDraft>
   ) => {
+    // Snapshot current state for rollback on error
+    const previousSuggestions = [...suggestions];
+
+    // Optimistically remove/update from UI immediately
+    setEditingId(null);
+    setSuggestions((prev) => {
+      if (activeTab === 'ALL') {
+        return prev.map((s) => (s.id === id ? { ...s, status: action === 'ACCEPT' ? 'ACCEPTED' : 'REJECTED' } : s));
+      }
+      return prev.filter((s) => s.id !== id);
+    });
+
     try {
       const res = await apiRequest<any>(`/email/suggestions/${id}/resolve`, {
         method: 'POST',
@@ -261,9 +273,13 @@ export const AutomationPage: React.FC = () => {
         setTimeout(() => setAcceptedToast(null), 8000);
       }
 
-      setEditingId(null);
-      fetchSuggestions();
+      window.dispatchEvent(new CustomEvent('applylog_application_created'));
+      window.dispatchEvent(new CustomEvent('applylog_suggestions_updated'));
+
+      fetchSuggestions(true);
     } catch (err: any) {
+      // Revert optimistic update on error
+      setSuggestions(previousSuggestions);
       alert(err.message || 'Failed to resolve suggestion');
     }
   };
