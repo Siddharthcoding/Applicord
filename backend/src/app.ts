@@ -97,6 +97,23 @@ export const createApp = () => {
   // API Routes with rate limiter
   app.use('/api/v1', apiLimiter, apiRouter);
 
+  // Root route for Google Search Console verification
+  app.get('/', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="google-site-verification" content="xRYxSHk-Iw3foXPzviPXwRwLHZCYk3NKWdBQ6LXyYbA" />
+        <title>Applicord API</title>
+      </head>
+      <body>
+        Applicord API is running.
+      </body>
+      </html>
+    `);
+  });
+
   // Fallback 404
   app.use((req, res) => {
     return res.status(404).json({
