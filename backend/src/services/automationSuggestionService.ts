@@ -388,6 +388,7 @@ export const automationSuggestionService = {
     return await prisma.automationSuggestion.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      take: 100, // cap payload size — prevents unbounded growth for users with many suggestions
       include: {
         application: {
           include: { company: true },

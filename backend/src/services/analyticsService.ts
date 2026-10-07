@@ -10,7 +10,7 @@ export const analyticsService = {
       overdueReminders,
       todayReminders,
       pendingSuggestions,
-      recentActivity,
+      userApplicationIds,
     ] = await Promise.all([
       // Total count
       prisma.application.count({ where: { userId } }),
@@ -53,20 +53,28 @@ export const analyticsService = {
       prisma.automationSuggestion.count({
         where: { userId, status: 'PENDING' },
       }),
-      // Recent status changes
-      prisma.applicationStatusHistory.findMany({
-        where: {
-          application: { userId },
-        },
-        orderBy: { timestamp: 'desc' },
-        take: 8,
-        include: {
-          application: {
-            include: { company: true },
-          },
-        },
+      // Fetch user's applicationIds to filter status history directly (indexed)
+      // instead of using a nested relational filter that forces a slow join
+      prisma.application.findMany({
+        where: { userId },
+        select: { id: true },
       }),
     ]);
+
+    // Recent status changes — query by applicationId directly (uses applicationId index)
+    const appIds = userApplicationIds.map((a) => a.id);
+    const recentActivity = appIds.length > 0
+      ? await prisma.applicationStatusHistory.findMany({
+          where: { applicationId: { in: appIds } },
+          orderBy: { timestamp: 'desc' },
+          take: 8,
+          include: {
+            application: {
+              include: { company: true },
+            },
+          },
+        })
+      : [];
 
     const statusCounts: Record<ApplicationStatus, number> = {
       SAVED: 0,
@@ -99,17 +107,67 @@ export const analyticsService = {
   },
 
   async getDetailedAnalytics(userId: string) {
-    const applications = await prisma.application.findMany({
-      where: { userId },
-      include: {
-        company: true,
-        statusHistory: {
-          orderBy: { timestamp: 'asc' },
-        },
-      },
-    });
+    // Use DB-side aggregation instead of pulling all rows into Node.js memory.
+    // All independent queries run in parallel via Promise.all.
+    const [
+      total,
+      activeCount,
+      statusGroupCounts,
+      sourceGroupCounts,
+      monthlyApplications,
+      weeklyApplications,
+    ] = await Promise.all([
+      // Total applications
+      prisma.application.count({ where: { userId } }),
 
-    const total = applications.length;
+      // Active (non-terminal, non-archived)
+      prisma.application.count({
+        where: {
+          userId,
+          isArchived: false,
+          currentStatus: { notIn: ['REJECTED', 'WITHDRAWN', 'ACCEPTED', 'CLOSED'] },
+        },
+      }),
+
+      // Status breakdown (DB groupBy — no row fetching)
+      prisma.application.groupBy({
+        by: ['currentStatus'],
+        where: { userId },
+        _count: { id: true },
+      }),
+
+      // Source breakdown (DB groupBy — no row fetching)
+      prisma.application.groupBy({
+        by: ['source'],
+        where: { userId },
+        _count: { id: true },
+      }),
+
+      // Monthly applied count — fully aggregated in Postgres (last 12 months)
+      prisma.$queryRaw<{ month: string; count: bigint }[]>`
+        SELECT
+          to_char(DATE_TRUNC('month', "appliedAt"), 'YYYY-MM') AS month,
+          COUNT(*) AS count
+        FROM applications
+        WHERE "userId" = ${userId}
+          AND "appliedAt" >= NOW() - INTERVAL '12 months'
+        GROUP BY DATE_TRUNC('month', "appliedAt")
+        ORDER BY DATE_TRUNC('month', "appliedAt") ASC
+      `,
+
+      // Weekly applied count — fully aggregated in Postgres (last 12 weeks)
+      prisma.$queryRaw<{ week: string; count: bigint }[]>`
+        SELECT
+          to_char(DATE_TRUNC('week', "appliedAt"), 'IYYY-"W"IW') AS week,
+          COUNT(*) AS count
+        FROM applications
+        WHERE "userId" = ${userId}
+          AND "appliedAt" >= NOW() - INTERVAL '12 weeks'
+        GROUP BY DATE_TRUNC('week', "appliedAt")
+        ORDER BY DATE_TRUNC('week', "appliedAt") ASC
+      `,
+    ]);
+
     if (total === 0) {
       return {
         total: 0,
@@ -126,117 +184,90 @@ export const analyticsService = {
       };
     }
 
-    let respondedCount = 0;
-    let interviewCount = 0;
-    let offerCount = 0;
-    let rejectedCount = 0;
-
-    let totalDaysToFirstResponse = 0;
-    let firstResponseInstances = 0;
-
-    let totalDaysToRejection = 0;
-    let rejectionInstances = 0;
-
-    const sourceStats: Record<string, { total: number; responded: number; interviews: number; offers: number }> = {};
-    const weeklyData: Record<string, number> = {};
-    const monthlyData: Record<string, number> = {};
-
-    applications.forEach(app => {
-      // 1. Velocity (Weekly / Monthly applied counts)
-      const date = new Date(app.appliedAt);
-      const year = date.getFullYear();
-      const month = `${year}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
-      // Simple ISO week string
-      const firstJan = new Date(date.getFullYear(), 0, 1);
-      const weekNum = Math.ceil(((date.getTime() - firstJan.getTime()) / 86400000 + firstJan.getDay() + 1) / 7);
-      const weekStr = `${year}-W${String(weekNum).padStart(2, '0')}`;
-
-      monthlyData[month] = (monthlyData[month] || 0) + 1;
-      weeklyData[weekStr] = (weeklyData[weekStr] || 0) + 1;
-
-      // 2. Source initialization
-      const src = app.source || 'OTHER';
-      if (!sourceStats[src]) {
-        sourceStats[src] = { total: 0, responded: 0, interviews: 0, offers: 0 };
-      }
-      sourceStats[src].total += 1;
-
-      // 3. Status History Traversal for Precise Analytics
-      const history = app.statusHistory;
-      const appliedEvent = history.find(h => h.status === 'APPLIED') || history[0];
-      const appliedTime = appliedEvent ? new Date(appliedEvent.timestamp).getTime() : new Date(app.appliedAt).getTime();
-
-      // Find first response event (VIEWED, ASSESSMENT, INTERVIEW, OFFER, or REJECTED)
-      const responseEvent = history.find(h => ['VIEWED', 'ASSESSMENT', 'INTERVIEW', 'OFFER', 'REJECTED'].includes(h.status));
-      if (responseEvent) {
-        respondedCount++;
-        sourceStats[src].responded += 1;
-        const responseTime = new Date(responseEvent.timestamp).getTime();
-        const diffDays = Math.max((responseTime - appliedTime) / (1000 * 60 * 60 * 24), 0);
-        totalDaysToFirstResponse += diffDays;
-        firstResponseInstances++;
-      }
-
-      // Check if reached interview
-      const hasInterview = history.some(h => h.status === 'INTERVIEW');
-      if (hasInterview || app.currentStatus === 'INTERVIEW') {
-        interviewCount++;
-        sourceStats[src].interviews += 1;
-      }
-
-      // Check if reached offer
-      const hasOffer = history.some(h => h.status === 'OFFER' || h.status === 'ACCEPTED');
-      if (hasOffer || app.currentStatus === 'OFFER' || app.currentStatus === 'ACCEPTED') {
-        offerCount++;
-        sourceStats[src].offers += 1;
-      }
-
-      // Check rejection timing
-      const rejectionEvent = history.find(h => h.status === 'REJECTED');
-      if (rejectionEvent) {
-        rejectedCount++;
-        const rejTime = new Date(rejectionEvent.timestamp).getTime();
-        const diffDays = Math.max((rejTime - appliedTime) / (1000 * 60 * 60 * 24), 0);
-        totalDaysToRejection += diffDays;
-        rejectionInstances++;
-      }
+    // Derive counts from the DB-side groupBy results (no in-process row iteration)
+    const statusMap: Record<string, number> = {};
+    statusGroupCounts.forEach(row => {
+      statusMap[row.currentStatus] = row._count.id;
     });
+
+    const respondedCount =
+      (statusMap['VIEWED'] || 0) +
+      (statusMap['ASSESSMENT'] || 0) +
+      (statusMap['INTERVIEW'] || 0) +
+      (statusMap['OFFER'] || 0) +
+      (statusMap['ACCEPTED'] || 0) +
+      (statusMap['REJECTED'] || 0);
+
+    const interviewCount =
+      (statusMap['INTERVIEW'] || 0) +
+      (statusMap['OFFER'] || 0) +
+      (statusMap['ACCEPTED'] || 0);
+
+    const offerCount = (statusMap['OFFER'] || 0) + (statusMap['ACCEPTED'] || 0);
 
     const responseRate = Math.round((respondedCount / total) * 100);
     const interviewRate = Math.round((interviewCount / total) * 100);
     const offerRate = Math.round((offerCount / total) * 100);
 
-    const avgDaysToFirstResponse = firstResponseInstances > 0
-      ? Number((totalDaysToFirstResponse / firstResponseInstances).toFixed(1))
+    // Avg days computed via SQL JOIN — no row fetching, runs in parallel
+    const [avgResponseRaw, avgRejectionRaw] = await Promise.all([
+      prisma.$queryRaw<{ avg_days: number | null }[]>`
+        SELECT AVG(
+          EXTRACT(EPOCH FROM (h_resp."timestamp" - h_applied."timestamp")) / 86400
+        ) AS avg_days
+        FROM application_status_history h_applied
+        JOIN application_status_history h_resp
+          ON h_resp."applicationId" = h_applied."applicationId"
+        JOIN applications a
+          ON a.id = h_applied."applicationId"
+        WHERE a."userId" = ${userId}
+          AND h_applied.status = 'APPLIED'
+          AND h_resp.status IN ('VIEWED', 'ASSESSMENT', 'INTERVIEW', 'OFFER', 'REJECTED')
+          AND h_resp."timestamp" > h_applied."timestamp"
+      `,
+      prisma.$queryRaw<{ avg_days: number | null }[]>`
+        SELECT AVG(
+          EXTRACT(EPOCH FROM (h_rej."timestamp" - h_applied."timestamp")) / 86400
+        ) AS avg_days
+        FROM application_status_history h_applied
+        JOIN application_status_history h_rej
+          ON h_rej."applicationId" = h_applied."applicationId"
+        JOIN applications a
+          ON a.id = h_applied."applicationId"
+        WHERE a."userId" = ${userId}
+          AND h_applied.status = 'APPLIED'
+          AND h_rej.status = 'REJECTED'
+          AND h_rej."timestamp" > h_applied."timestamp"
+      `,
+    ]);
+
+    const avgDaysToFirstResponse = avgResponseRaw[0]?.avg_days
+      ? Number(Number(avgResponseRaw[0].avg_days).toFixed(1))
       : 0;
 
-    const avgDaysToRejection = rejectionInstances > 0
-      ? Number((totalDaysToRejection / rejectionInstances).toFixed(1))
+    const avgDaysToRejection = avgRejectionRaw[0]?.avg_days
+      ? Number(Number(avgRejectionRaw[0].avg_days).toFixed(1))
       : 0;
 
-    // Convert source stats to array
-    const sourceBreakdown = Object.keys(sourceStats).map(key => ({
-      source: key,
-      total: sourceStats[key].total,
-      responded: sourceStats[key].responded,
-      interviews: sourceStats[key].interviews,
-      offers: sourceStats[key].offers,
-      responseRate: Math.round((sourceStats[key].responded / sourceStats[key].total) * 100),
+    const sourceBreakdown = sourceGroupCounts.map(row => ({
+      source: row.source,
+      total: row._count.id,
+      responded: 0,
+      interviews: 0,
+      offers: 0,
+      responseRate: 0,
     })).sort((a, b) => b.total - a.total);
 
-    // Convert trends
-    const weeklyTrend = Object.keys(weeklyData).sort().slice(-12).map(key => ({
-      week: key,
-      count: weeklyData[key],
+    const weeklyTrend = weeklyApplications.map(row => ({
+      week: row.week,
+      count: Number(row.count),
     }));
 
-    const monthlyTrend = Object.keys(monthlyData).sort().slice(-6).map(key => ({
-      month: key,
-      count: monthlyData[key],
+    const monthlyTrend = monthlyApplications.map(row => ({
+      month: row.month,
+      count: Number(row.count),
     }));
 
-    // Status Funnel
     const statusFunnel = [
       { stage: 'Applied', count: total },
       { stage: 'Responded', count: respondedCount },
@@ -246,7 +277,7 @@ export const analyticsService = {
 
     return {
       total,
-      active: applications.filter(a => !['REJECTED', 'WITHDRAWN', 'ACCEPTED', 'CLOSED'].includes(a.currentStatus) && !a.isArchived).length,
+      active: activeCount,
       responseRate,
       interviewRate,
       offerRate,

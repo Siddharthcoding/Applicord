@@ -218,6 +218,7 @@ model ApplicationStatusHistory {
 
   @@index([applicationId])
   @@index([timestamp])
+  @@index([applicationId, timestamp]) // composite — used by recent-activity dashboard query & avg-days joins
   @@map("application_status_history")
 }
 
@@ -414,5 +415,7 @@ model AutomationSuggestion {
 
   @@index([userId])
   @@index([status])
+  @@index([userId, status])   // composite — listSuggestions always filters by userId + optional status
+  @@index([userId, createdAt]) // composite — ordering by createdAt within a user's suggestions
   @@map("automation_suggestions")
 }

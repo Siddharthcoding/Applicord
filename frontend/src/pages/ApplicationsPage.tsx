@@ -81,10 +81,18 @@ export const ApplicationsPage: React.FC = () => {
     }
   };
 
+  // Re-fetch when filters or sort change
   useEffect(() => {
     fetchApplications(1);
-    window.addEventListener('applylog_application_created', () => fetchApplications(1));
   }, [statusFilter, sourceFilter, workModeFilter, priorityFilter, sortBy, sortOrder]);
+
+  // Event listener registered once — not inside the filter effect to avoid leaking
+  // a new listener on every filter change without the old one being removed.
+  useEffect(() => {
+    const handler = () => fetchApplications(1);
+    window.addEventListener('applylog_application_created', handler);
+    return () => window.removeEventListener('applylog_application_created', handler);
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

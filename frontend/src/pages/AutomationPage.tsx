@@ -147,16 +147,23 @@ export const AutomationPage: React.FC = () => {
 
     window.addEventListener('applylog_suggestions_updated', handleUpdate);
 
-    // Active polling: Every 3.5s when syncing or fresh OAuth, otherwise every 10s
-    const pollInterval = (syncingIntegrationId !== null || isSyncingAll || gmailConnected) ? 3500 : 10000;
-    const interval = setInterval(() => {
-      fetchSuggestions(true);
-      fetchIntegrations();
-    }, pollInterval);
+    // Only poll when actively syncing or immediately after a fresh OAuth redirect.
+    // During idle browsing, stop polling — firing requests every few seconds
+    // wastes Neon connection quota and slows every other page sharing the same DB pool.
+    const isActivelySyncing = syncingIntegrationId !== null || isSyncingAll || gmailConnected;
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    if (isActivelySyncing) {
+      const pollInterval = gmailConnected ? 3500 : 5000;
+      interval = setInterval(() => {
+        fetchSuggestions(true);
+        fetchIntegrations();
+      }, pollInterval);
+    }
 
     return () => {
       window.removeEventListener('applylog_suggestions_updated', handleUpdate);
-      clearInterval(interval);
+      if (interval !== null) clearInterval(interval);
     };
   }, [activeTab, syncingIntegrationId, isSyncingAll, gmailConnected]);
 
