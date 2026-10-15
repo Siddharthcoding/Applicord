@@ -14,6 +14,11 @@ import { checkRedisAvailable } from './config/redis';
 export const createApp = () => {
   const app = express();
 
+  // Trust Render's / any reverse proxy's X-Forwarded-For header.
+  // Required for express-rate-limit to correctly identify client IPs
+  // and to avoid ERR_ERL_UNEXPECTED_X_FORWARDED_FOR validation errors.
+  app.set('trust proxy', 1);
+
   // Enable gzip/deflate compression for all responses.
   // Shrinks JSON API payloads from 60-100 KB to ~8-15 KB — ~80% smaller.
   app.use(compression());

@@ -182,6 +182,10 @@ export const googleOAuthService = {
       data: { syncStatus: 'SYNCING' },
     });
 
+    // Hard 50s deadline — ensures HTTP handler always responds even if Gmail is slow
+    const syncDeadline = Date.now() + 50_000;
+    const isOverDeadline = () => Date.now() > syncDeadline;
+
     try {
       const accessToken = await this.getValidAccessToken(integration);
       if (!accessToken) {
@@ -190,64 +194,20 @@ export const googleOAuthService = {
         throw authErr;
       }
 
-      // Query Gmail messages for application-related keywords (confirmations, interviews, assessments, rejections)
-      const query = 'subject:(applied OR application OR interview OR offer OR assessment OR update OR status OR candidate OR candidacy OR "thank you" OR careers OR recruiting OR decision OR position OR job OR "next steps")';
-      const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`;
-
-      const listRes = await fetch(listUrl, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-
-      if (!listRes.ok) {
-        const errorText = await listRes.text();
-        let isScopeError = false;
+      // Helper: fetch with per-request timeout
+      const fetchWithTimeout = async (url: string, timeoutMs = 8000) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
-          const parsed = JSON.parse(errorText);
-          const errorDetails = parsed?.error?.details || [];
-          const reasons = errorDetails.map((d: any) => d?.reason);
-          if (
-            parsed?.error?.code === 403 &&
-            (reasons.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
-              errorText.includes('insufficient authentication scopes') ||
-              errorText.includes('insufficientPermissions'))
-          ) {
-            isScopeError = true;
-          }
-        } catch {
-          if (
-            listRes.status === 403 &&
-            (errorText.includes('insufficient authentication scopes') ||
-              errorText.includes('insufficientPermissions'))
-          ) {
-            isScopeError = true;
-          }
+          const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            signal: controller.signal,
+          });
+          return res;
+        } finally {
+          clearTimeout(timer);
         }
-
-        if (isScopeError || listRes.status === 403) {
-          const authErr: any = new Error(
-            'Gmail permission denied. The connected Google account has not granted permission to read emails. Please disconnect and reconnect your account, making sure to check the box allowing email access.'
-          );
-          authErr.statusCode = 403;
-          throw authErr;
-        }
-
-        if (listRes.status === 401) {
-          const authErr: any = new Error(
-            'Google authentication expired or was revoked. Please disconnect and reconnect your Gmail account.'
-          );
-          authErr.statusCode = 401;
-          throw authErr;
-        }
-
-        const apiErr: any = new Error(`Gmail API list messages error: ${errorText}`);
-        apiErr.statusCode = 502;
-        throw apiErr;
-      }
-
-      const listData = (await listRes.json()) as any;
-      const messages: any[] = listData.messages || [];
-
-      let syncedCount = 0;
+      };
 
       // Helper to clean HTML emails and convert to readable text
       const htmlToPlainText = (html: string): string => {
@@ -316,8 +276,6 @@ export const googleOAuthService = {
       // Master extractor: prioritizes true plain text, falls back to cleaned HTML
       const extractMessageBody = (payload: any): string => {
         if (!payload) return '';
-
-        // 1. If payload has direct data
         if (payload.body?.data) {
           const decoded = Buffer.from(payload.body.data, 'base64url').toString('utf8');
           if (payload.mimeType === 'text/html' || decoded.includes('<html') || decoded.includes('<!DOCTYPE')) {
@@ -325,32 +283,162 @@ export const googleOAuthService = {
           }
           return decoded.trim();
         }
-
-        // 2. Search multipart parts for plain text first
         const plainText = findPlainTextPart(payload);
         if (plainText) {
-          // If plainText accidentally contains HTML doctype tags, clean it
           if (plainText.includes('<html') || plainText.includes('<!DOCTYPE')) {
             return htmlToPlainText(plainText);
           }
           return plainText.trim();
         }
-
-        // 3. Fallback to HTML part cleaned of all tags
         const htmlText = findHtmlPart(payload);
-        if (htmlText) {
-          return htmlText;
-        }
-
+        if (htmlText) return htmlText;
         return '';
       };
 
-      for (const msgRef of messages) {
+      // ── Incremental sync via Gmail History API ────────────────────────────────
+      // If we have a saved historyId, only fetch messages added since then.
+      // On the very first sync (no historyId), use a date filter capped at 90 days.
+      let messageIds: string[] = [];
+      let newHistoryId: string | null = null;
+
+      const lastHistoryId = (integration as any).lastHistoryId as string | null;
+
+      if (lastHistoryId) {
+        // Incremental: use Gmail History API — only new messages since last sync
+        const historyUrl = `https://gmail.googleapis.com/gmail/v1/users/me/history?startHistoryId=${lastHistoryId}&historyTypes=messageAdded&maxResults=25`;
+        let histRes: Response;
         try {
-          const msgUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgRef.id}?format=full`;
-          const msgRes = await fetch(msgUrl, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          });
+          histRes = await fetchWithTimeout(historyUrl, 10000);
+        } catch (fetchErr: any) {
+          if (fetchErr.name === 'AbortError') {
+            logger.warn('[Gmail Sync] History fetch timed out, falling back to full query');
+            histRes = null as any;
+          } else {
+            throw fetchErr;
+          }
+        }
+
+        if (histRes && histRes.ok) {
+          const histData = (await histRes.json()) as any;
+          newHistoryId = histData.historyId || null;
+          const historyRecords: any[] = histData.history || [];
+          for (const record of historyRecords) {
+            for (const added of record.messagesAdded || []) {
+              if (added.message?.id) {
+                messageIds.push(added.message.id);
+              }
+            }
+          }
+          logger.info(`[Gmail Sync] Incremental: ${messageIds.length} new messages since historyId ${lastHistoryId}`);
+        } else if (histRes && histRes.status === 404) {
+          // historyId expired — fall through to full query below
+          logger.warn('[Gmail Sync] HistoryId expired (404), falling back to full query');
+          lastHistoryId && (messageIds = []); // trigger fallback
+        } else if (histRes) {
+          // Non-404 error from history API — check for auth issues
+          if (histRes.status === 401 || histRes.status === 403) {
+            const authErr: any = new Error(
+              'Gmail permission denied. Please disconnect and reconnect your account.'
+            );
+            authErr.statusCode = histRes.status;
+            throw authErr;
+          }
+        }
+      }
+
+      // Full query fallback: no historyId, or historyId expired
+      if (!lastHistoryId || messageIds.length === 0 && !newHistoryId) {
+        const query = 'subject:(applied OR application OR interview OR offer OR assessment OR update OR status OR candidate OR candidacy OR "thank you" OR careers OR recruiting OR decision OR position OR job OR "next steps")';
+        // On first sync, cap to last 90 days so we don't scan the entire inbox
+        const afterDate = !lastHistoryId
+          ? `after:${Math.floor((Date.now() - 90 * 24 * 60 * 60 * 1000) / 1000)}`
+          : '';
+        const listUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(
+          afterDate ? `${query} ${afterDate}` : query
+        )}&maxResults=25`;
+
+        let listRes: Response;
+        try {
+          listRes = await fetchWithTimeout(listUrl, 12000);
+        } catch (fetchErr: any) {
+          if (fetchErr.name === 'AbortError') {
+            const timeoutErr: any = new Error('Gmail API timed out. Please try again in a moment.');
+            timeoutErr.statusCode = 504;
+            throw timeoutErr;
+          }
+          throw fetchErr;
+        }
+
+        if (!listRes.ok) {
+          const errorText = await listRes.text();
+          let isScopeError = false;
+          try {
+            const parsed = JSON.parse(errorText);
+            const errorDetails = parsed?.error?.details || [];
+            const reasons = errorDetails.map((d: any) => d?.reason);
+            if (
+              parsed?.error?.code === 403 &&
+              (reasons.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
+                errorText.includes('insufficient authentication scopes') ||
+                errorText.includes('insufficientPermissions'))
+            ) {
+              isScopeError = true;
+            }
+          } catch {
+            if (listRes.status === 403 && errorText.includes('insufficientPermissions')) {
+              isScopeError = true;
+            }
+          }
+
+          if (isScopeError || listRes.status === 403) {
+            const authErr: any = new Error(
+              'Gmail permission denied. Please disconnect and reconnect your account, making sure to check the box allowing email access.'
+            );
+            authErr.statusCode = 403;
+            throw authErr;
+          }
+
+          if (listRes.status === 401) {
+            const authErr: any = new Error(
+              'Google authentication expired. Please disconnect and reconnect your Gmail account.'
+            );
+            authErr.statusCode = 401;
+            throw authErr;
+          }
+
+          const apiErr: any = new Error(`Gmail API list messages error: ${errorText}`);
+          apiErr.statusCode = 502;
+          throw apiErr;
+        }
+
+        const listData = (await listRes.json()) as any;
+        newHistoryId = listData.historyId || null;
+        messageIds = (listData.messages || []).map((m: any) => m.id);
+        logger.info(`[Gmail Sync] Full query: ${messageIds.length} messages found`);
+      }
+
+      // ── Process each message ──────────────────────────────────────────────────
+      let syncedCount = 0;
+
+      for (const msgId of messageIds) {
+        // Stop if we're over the hard deadline
+        if (isOverDeadline()) {
+          logger.warn(`[Gmail Sync] Reached 50s deadline, stopping after ${syncedCount} messages`);
+          break;
+        }
+
+        try {
+          const msgUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`;
+          let msgRes: Response;
+          try {
+            msgRes = await fetchWithTimeout(msgUrl, 8000);
+          } catch (fetchErr: any) {
+            if (fetchErr.name === 'AbortError') {
+              logger.warn(`[Gmail Sync] Message ${msgId} fetch timed out, skipping`);
+              continue;
+            }
+            throw fetchErr;
+          }
 
           if (!msgRes.ok) continue;
 
@@ -366,11 +454,8 @@ export const googleOAuthService = {
           const subject = getHeader('Subject');
           const dateStr = getHeader('Date');
           const snippet: string = msg.snippet || '';
-
-          // Extract clean human-readable message body (NO raw HTML)
           const body = extractMessageBody(msg.payload) || snippet;
 
-          // Process the incoming email through classification and application matching
           await emailService.processIncomingEmail(integration.userId, integration.id, {
             messageId: msg.id,
             sender,
@@ -382,18 +467,21 @@ export const googleOAuthService = {
 
           syncedCount++;
         } catch (msgErr) {
-          logger.warn(`Error processing Gmail message ${msgRef.id}`, { error: String(msgErr) });
+          logger.warn(`[Gmail Sync] Error processing message ${msgId}`, { error: String(msgErr) });
         }
       }
 
+      // Save the new historyId cursor so next sync is incremental
       await prisma.emailIntegration.update({
         where: { id: integrationId },
         data: {
           syncStatus: 'SUCCESS',
           lastSyncAt: new Date(),
+          ...(newHistoryId ? { lastHistoryId: newHistoryId } : {}),
         },
       });
 
+      logger.info(`[Gmail Sync] Done. Processed ${syncedCount} new emails for integration ${integrationId}`);
       return { syncedCount };
     } catch (err: any) {
       logger.error('Failed to sync Gmail inbox', { error: String(err) });
@@ -411,3 +499,4 @@ export const googleOAuthService = {
     }
   },
 };
+

@@ -365,7 +365,8 @@ model EmailIntegration {
   encryptedRefreshToken String?
   tokenExpiry          DateTime?
   lastSyncAt           DateTime?
-  syncStatus           String           @default("IDLE") // IDLE, SYNCING, ERROR, SUCCESS
+  lastHistoryId        String?          // Gmail incremental sync cursor — only fetch messages newer than this
+  syncStatus           String           @default("IDLE") // IDLE, SYNCING, ERROR, SUCCESS, AUTH_REQUIRED
   isEnabled            Boolean          @default(true)
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
