@@ -121,7 +121,16 @@ export const emailController = {
 
   async syncIntegration(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
+      const userId = req.user!.userId;
       const integrationId = req.params.id;
+      const integration = await prisma.emailIntegration.findFirst({
+        where: { id: integrationId, userId },
+      });
+      if (!integration) {
+        const notFoundErr: any = new Error('Email integration not found');
+        notFoundErr.statusCode = 404;
+        throw notFoundErr;
+      }
       const result = await googleOAuthService.syncGmailInbox(integrationId);
       return sendSuccess(res, result, 'Gmail inbox synced successfully');
     } catch (err) {

@@ -28,6 +28,7 @@ export const googleOAuthService = {
       ].join(' '),
       access_type: 'offline',
       prompt: 'select_account consent',
+      include_granted_scopes: 'true',
       state: statePayload,
     });
 
@@ -70,6 +71,23 @@ export const googleOAuthService = {
     if (!tokenResponse.ok || !tokenData?.access_token) {
       logger.error('Failed to exchange Google OAuth code', { error: tokenData });
       throw new Error(tokenData?.error_description || 'Failed to exchange authorization code with Google.');
+    }
+
+    // Verify user granted Gmail read permissions (Google Granular Permissions)
+    if (typeof tokenData.scope === 'string') {
+      const grantedScopes = tokenData.scope.split(' ');
+      const hasGmailScope = grantedScopes.some((s: string) =>
+        s.includes('gmail.readonly') || s === 'https://mail.google.com/' || s.includes('gmail.modify')
+      );
+
+      if (!hasGmailScope) {
+        logger.warn('Google OAuth completed but Gmail permission was omitted/denied by user', {
+          grantedScopes: tokenData.scope,
+        });
+        throw new Error(
+          'Gmail permission was not granted. On the Google authorization screen, please check the box to allow Applicord to view your email messages.'
+        );
+      }
     }
 
     // Retrieve user email address from Google
@@ -167,7 +185,9 @@ export const googleOAuthService = {
     try {
       const accessToken = await this.getValidAccessToken(integration);
       if (!accessToken) {
-        throw new Error('No valid access token available for Gmail sync.');
+        const authErr: any = new Error('No valid access token available for Gmail sync. Please reconnect your account.');
+        authErr.statusCode = 401;
+        throw authErr;
       }
 
       // Query Gmail messages for application-related keywords (confirmations, interviews, assessments, rejections)
@@ -180,7 +200,48 @@ export const googleOAuthService = {
 
       if (!listRes.ok) {
         const errorText = await listRes.text();
-        throw new Error(`Gmail API list messages error: ${errorText}`);
+        let isScopeError = false;
+        try {
+          const parsed = JSON.parse(errorText);
+          const errorDetails = parsed?.error?.details || [];
+          const reasons = errorDetails.map((d: any) => d?.reason);
+          if (
+            parsed?.error?.code === 403 &&
+            (reasons.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT') ||
+              errorText.includes('insufficient authentication scopes') ||
+              errorText.includes('insufficientPermissions'))
+          ) {
+            isScopeError = true;
+          }
+        } catch {
+          if (
+            listRes.status === 403 &&
+            (errorText.includes('insufficient authentication scopes') ||
+              errorText.includes('insufficientPermissions'))
+          ) {
+            isScopeError = true;
+          }
+        }
+
+        if (isScopeError || listRes.status === 403) {
+          const authErr: any = new Error(
+            'Gmail permission denied. The connected Google account has not granted permission to read emails. Please disconnect and reconnect your account, making sure to check the box allowing email access.'
+          );
+          authErr.statusCode = 403;
+          throw authErr;
+        }
+
+        if (listRes.status === 401) {
+          const authErr: any = new Error(
+            'Google authentication expired or was revoked. Please disconnect and reconnect your Gmail account.'
+          );
+          authErr.statusCode = 401;
+          throw authErr;
+        }
+
+        const apiErr: any = new Error(`Gmail API list messages error: ${errorText}`);
+        apiErr.statusCode = 502;
+        throw apiErr;
       }
 
       const listData = (await listRes.json()) as any;
@@ -336,9 +397,15 @@ export const googleOAuthService = {
       return { syncedCount };
     } catch (err: any) {
       logger.error('Failed to sync Gmail inbox', { error: String(err) });
+      const isAuthError =
+        err.statusCode === 401 ||
+        err.statusCode === 403 ||
+        String(err).includes('insufficient authentication scopes') ||
+        String(err).includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT');
+
       await prisma.emailIntegration.update({
         where: { id: integrationId },
-        data: { syncStatus: 'FAILED' },
+        data: { syncStatus: isAuthError ? 'AUTH_REQUIRED' : 'FAILED' },
       });
       throw err;
     }

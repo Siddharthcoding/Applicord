@@ -9,6 +9,7 @@ export const processEmailSync = async () => {
     where: {
       isEnabled: true,
       provider: 'GMAIL',
+      syncStatus: { not: 'AUTH_REQUIRED' },
     },
   });
 

@@ -192,6 +192,7 @@ export const AutomationPage: React.FC = () => {
       fetchSuggestions();
     } catch (err: any) {
       alert(err.message || 'Failed to sync Gmail inbox');
+      fetchIntegrations();
     } finally {
       setSyncingIntegrationId(null);
     }
@@ -434,16 +435,40 @@ export const AutomationPage: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-xs text-white">{account.providerAccountId}</span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#142018] text-[#10B981] border border-[#1A3828] flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                          Active
-                        </span>
+                        {account.syncStatus === 'AUTH_REQUIRED' ? (
+                          <span
+                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#2A1719] text-[#F87171] border border-[#4B1E22] flex items-center gap-1"
+                            title="Permission denied or expired. Disconnect and reconnect this account."
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#F87171]" />
+                            Auth Required
+                          </span>
+                        ) : account.syncStatus === 'FAILED' ? (
+                          <span
+                            className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#2A2014] text-[#FBBF24] border border-[#4B391A] flex items-center gap-1"
+                            title="Last sync failed. Click Sync Now to retry."
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#FBBF24]" />
+                            Sync Issue
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-[#142018] text-[#10B981] border border-[#1A3828] flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
+                            Active
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-[#636B78] font-mono mt-0.5 flex items-center gap-2.5">
                         <span>{account._count?.processedEmails || 0} emails processed</span>
                         <span>•</span>
                         <span>Last scan: {account.lastSyncAt ? new Date(account.lastSyncAt).toLocaleString() : 'Never'}</span>
                       </div>
+                      {account.syncStatus === 'AUTH_REQUIRED' && (
+                        <div className="text-[11px] text-[#F87171] font-sans mt-1.5 flex items-center gap-1.5">
+                          <AlertTriangle size={12} className="shrink-0" />
+                          <span>Missing Gmail read permission. Please disconnect and reconnect, checking the box for email access.</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
