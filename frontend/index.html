@@ -1,14 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="google-site-verification" content="3IrbS53xR1BbngMI1mhdm-2rwmod6syFhK-fzUWcEck" />
-    <link rel="icon" type="image/svg+xml" href="/applicord.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Applicord — Every opportunity, in rhythm.</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Search Engine Verification -->
+    <meta name="google-site-verification" content="3IrbS53xR1BbngMI1mhdm-2rwmod6syFhK-fzUWcEck" />
+
+    <!-- Primary SEO Metadata -->
+    <title>Applicord — Intelligent Job Application Tracker & Career Workspace</title>
+    <meta name="title" content="Applicord — Intelligent Job Application Tracker & Career Workspace" />
+    <meta
+      name="description"
+      content="A calm, intelligent workspace for tracking job applications, email signals, interview timelines, and follow-ups. Connect Gmail with read-only AI signals and replace messy spreadsheets."
+    />
+    <meta
+      name="keywords"
+      content="job application tracker, job search CRM, gmail job tracker, interview tracker, career organizer, job tracker app, application management, resume tracker, job search pipeline, applicord"
+    />
+    <meta name="author" content="Applicord" />
+    <link rel="canonical" href="https://applicord.vercel.app/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+
+    <!-- Mobile, Browser & PWA -->
+    <meta name="theme-color" content="#07090e" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Applicord" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="icon" type="image/svg+xml" href="/applicord.svg" />
+    <link rel="apple-touch-icon" href="/applicord.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Applicord" />
+    <meta property="og:url" content="https://applicord.vercel.app/" />
+    <meta property="og:title" content="Applicord — Intelligent Job Application Tracker & Career Workspace" />
+    <meta
+      property="og:description"
+      content="A calm, intelligent workspace for tracking job applications, email signals, interview timelines, and follow-ups. Connect Gmail with read-only AI signals and replace messy spreadsheets."
+    />
+    <meta property="og:image" content="https://applicord.vercel.app/applicord-og.svg" />
+    <meta property="og:image:type" content="image/svg+xml" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Applicord — Every opportunity, in rhythm." />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://applicord.vercel.app/" />
+    <meta name="twitter:title" content="Applicord — Intelligent Job Application Tracker & Career Workspace" />
+    <meta
+      name="twitter:description"
+      content="A calm, intelligent workspace for tracking job applications, email signals, interview timelines, and follow-ups. No more messy spreadsheets."
+    />
+    <meta name="twitter:image" content="https://applicord.vercel.app/applicord-og.svg" />
+    <meta name="twitter:image:alt" content="Applicord — Every opportunity, in rhythm." />
+
+    <!-- Structured Data (JSON-LD) for Search Engines -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://applicord.vercel.app/#webapp",
+            "name": "Applicord",
+            "url": "https://applicord.vercel.app/",
+            "description": "Intelligent job application tracker and career workspace with Gmail read-only signal detection, application pipelines, interview calendar, and smart follow-up reminders.",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "All",
+            "browserRequirements": "Requires JavaScript. Requires HTML5.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "Automated Gmail signal detection with read-only access",
+              "Application pipeline and kanban board",
+              "Interview calendar and deadlines",
+              "Smart recruiter follow-up reminders",
+              "Detailed application analytics and conversion metrics",
+              "Contact and document management"
+            ]
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://applicord.vercel.app/#organization",
+            "name": "Applicord",
+            "url": "https://applicord.vercel.app/",
+            "logo": "https://applicord.vercel.app/applicord.svg",
+            "sameAs": []
+          }
+        ]
+      }
+    </script>
+
+    <!-- Performance & Fonts Preconnections -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body class="bg-[#07090e] text-slate-100 antialiased font-sans selection:bg-cyan-500/20 selection:text-cyan-200">
     <div id="root"></div>

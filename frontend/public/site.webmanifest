@@ -1,0 +1,17 @@
+{
+  "name": "Applicord — Job Application Tracker",
+  "short_name": "Applicord",
+  "description": "Every opportunity, in rhythm. Intelligent job tracking, email signals, and career workspace.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07090e",
+  "theme_color": "#07090e",
+  "icons": [
+    {
+      "src": "/applicord.svg",
+      "sizes": "32x32 48x48 72x72 96x96 128x128 256x256",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

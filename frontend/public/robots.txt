@@ -1,0 +1,32 @@
+# Robots.txt for Applicord (https://applicord.vercel.app)
+User-agent: *
+Allow: /
+Allow: /landing
+Allow: /login
+Allow: /register
+Allow: /forgot-password
+Allow: /reset-password
+Allow: /privacy
+Allow: /privacy/
+Allow: /privacy.html
+Allow: /terms
+Allow: /terms/
+Allow: /terms.html
+
+# Disallow private authenticated workspace pages & API calls
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /applications
+Disallow: /applications/
+Disallow: /kanban
+Disallow: /calendar
+Disallow: /automation
+Disallow: /analytics
+Disallow: /contacts
+Disallow: /documents
+Disallow: /import-export
+Disallow: /settings
+Disallow: /api/
+
+# XML Sitemap
+Sitemap: https://applicord.vercel.app/sitemap.xml

@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07090e" />
+      <stop offset="50%" stop-color="#0b101b" />
+      <stop offset="100%" stop-color="#07090e" />
+    </linearGradient>
+
+    <!-- Glow Orbs -->
+    <radialGradient id="glowIndigo" cx="20%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#4f46e5" stop-opacity="0.25" />
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glowCyan" cx="80%" cy="70%" r="50%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Logo Gradient -->
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+    <linearGradient id="linkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGradient)" />
+  <rect width="1200" height="630" fill="url(#glowIndigo)" />
+  <rect width="1200" height="630" fill="url(#glowCyan)" />
+
+  <!-- Subtle Border Frame -->
+  <rect x="24" y="24" width="1152" height="582" rx="20" fill="none" stroke="#1e293b" stroke-width="1.5" />
+
+  <!-- Logo Mark -->
+  <g transform="translate(100, 100)">
+    <rect width="72" height="72" rx="18" fill="url(#logoGrad)" />
+    <!-- Mini Doc Icon -->
+    <path d="M22 17C22 15 23.5 14 25.5 14H42.5L52 23.5V53C52 55 50.5 56 48.5 56H25.5C23.5 56 22 55 22 53V17Z" fill="#ffffff" />
+    <path d="M42.5 14V23.5H52L42.5 14Z" fill="#cbd5e1" />
+    <line x1="28" y1="25" x2="37" y2="25" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="32" x2="45" y2="32" stroke="#4f46e5" stroke-width="3" stroke-linecap="round" />
+    <path d="M28 44C33 40 39 48 44 44" stroke="url(#linkGrad)" stroke-width="3" stroke-linecap="round" fill="none" />
+    <circle cx="28" cy="44" r="3" fill="#10b981" />
+    <circle cx="44" cy="44" r="3" fill="#3b82f6" />
+  </g>
+
+  <!-- Brand Title -->
+  <text x="195" y="148" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="34" font-weight="800" fill="#f8fafc" letter-spacing="3">APPLICORD</text>
+  <text x="195" y="176" font-family="'JetBrains Mono', monospace" font-size="14" font-weight="600" fill="#38bdf8" letter-spacing="1.5">INTELLIGENT CAREER WORKSPACE</text>
+
+  <!-- Main Headline -->
+  <text x="100" y="280" font-family="'Outfit', system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#ffffff" letter-spacing="-1">
+    Every opportunity, in rhythm.
+  </text>
+
+  <!-- Subheadline -->
+  <text x="100" y="340" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="#94a3b8">
+    One calm workspace for applications, email signals, recruiter context,
+  </text>
+  <text x="100" y="375" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="24" font-weight="400" fill="#94a3b8">
+    follow-ups, and the decisions that move your career forward.
+  </text>
+
+  <!-- Feature Pills -->
+  <g transform="translate(100, 440)">
+    <!-- Pill 1 -->
+    <g transform="translate(0, 0)">
+      <rect width="210" height="44" rx="22" fill="#111827" stroke="#334155" stroke-width="1.2" />
+      <text x="105" y="27" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="600" fill="#38bdf8" text-anchor="middle">✦ Gmail Signals</text>
+    </g>
+    <!-- Pill 2 -->
+    <g transform="translate(225, 0)">
+      <rect width="230" height="44" rx="22" fill="#111827" stroke="#334155" stroke-width="1.2" />
+      <text x="115" y="27" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="600" fill="#818cf8" text-anchor="middle">✦ Application Pipeline</text>
+    </g>
+    <!-- Pill 3 -->
+    <g transform="translate(470, 0)">
+      <rect width="215" height="44" rx="22" fill="#111827" stroke="#334155" stroke-width="1.2" />
+      <text x="107" y="27" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="600" fill="#34d399" text-anchor="middle">✦ Smart Follow-ups</text>
+    </g>
+    <!-- Pill 4 -->
+    <g transform="translate(700, 0)">
+      <rect width="200" height="44" rx="22" fill="#111827" stroke="#334155" stroke-width="1.2" />
+      <text x="100" y="27" font-family="'Plus Jakarta Sans', sans-serif" font-size="14" font-weight="600" fill="#f472b6" text-anchor="middle">✦ Deep Analytics</text>
+    </g>
+  </g>
+
+  <!-- Bottom URL -->
+  <text x="100" y="555" font-family="'JetBrains Mono', monospace" font-size="16" font-weight="500" fill="#64748b">applicord.vercel.app</text>
+</svg>
