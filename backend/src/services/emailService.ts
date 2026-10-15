@@ -85,6 +85,19 @@ export const emailService = {
       return { status: 'SKIPPED_DUPLICATE', id: existing.id };
     }
 
+    // Also check if this user already processed this providerMessageId in any of their integrations
+    const existingForUser = await prisma.processedEmail.findFirst({
+      where: {
+        providerMessageId: email.messageId,
+        integration: { userId },
+      },
+    });
+
+    if (existingForUser) {
+      logger.debug('Skipping email already processed by user in another integration', { messageId: email.messageId });
+      return { status: 'SKIPPED_DUPLICATE', id: existingForUser.id };
+    }
+
     // 2. Clean body text: strip HTML before truncating so char budget goes to real content
     const rawBody = email.body && email.body !== email.snippet ? email.body : null;
     // Body arriving here should already be cleaned by googleOAuthService, but we guard anyway
@@ -143,6 +156,7 @@ export const emailService = {
       body: bodyText || undefined,
       detectedCompany: classificationResult.detectedCompany,
       detectedRole: classificationResult.detectedRole,
+      messageId: email.messageId,
     });
 
     return {

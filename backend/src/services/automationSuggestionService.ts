@@ -12,6 +12,7 @@ import { statusService } from './statusService';
 import { auditService } from './auditService';
 import { applicationService } from './applicationService';
 import { companyService } from './companyService';
+import { logger } from '../utils/logger';
 
 type SuggestionOverrides = {
   company?: string; role?: string; status?: string; appliedAt?: string; jobUrl?: string; jobId?: string;
@@ -32,6 +33,7 @@ export const automationSuggestionService = {
     body?: string;
     detectedCompany?: string;
     detectedRole?: string;
+    messageId?: string;
   }) {
     const {
       userId,
@@ -45,6 +47,7 @@ export const automationSuggestionService = {
       body,
       detectedCompany,
       detectedRole,
+      messageId,
     } = params;
 
     const userSettings = await prisma.userSettings.findUnique({
@@ -86,6 +89,57 @@ export const automationSuggestionService = {
         break;
       default:
         return null; // Irrelevant or recruiter general
+    }
+
+    // ── Deduplication Guard 1: Same subject + sender ─────────────────────────────
+    // Prevents re-creating a suggestion for an email we already created a suggestion
+    // for (regardless of whether it was ACCEPTED / REJECTED / still PENDING).
+    const existingBySignal = await prisma.automationSuggestion.findFirst({
+      where: {
+        userId,
+        payload: {
+          path: ['subject'],
+          equals: subject,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existingBySignal) {
+      logger.debug('Skipping duplicate suggestion — subject already processed', {
+        subject,
+        userId,
+        existingId: existingBySignal.id,
+        existingStatus: existingBySignal.status,
+        messageId,
+      });
+      return { status: 'SKIPPED_DUPLICATE_SUGGESTION', existingSuggestion: existingBySignal };
+    }
+
+    // ── Deduplication Guard 2: Same application + targetStatus already ACCEPTED ──
+    // Prevents re-suggesting a status that was already accepted for a known application.
+    if (applicationId && targetStatus) {
+      const acceptedForApp = await prisma.automationSuggestion.findFirst({
+        where: {
+          userId,
+          applicationId,
+          status: SuggestionStatus.ACCEPTED,
+          payload: {
+            path: ['targetStatus'],
+            equals: targetStatus,
+          },
+        },
+      });
+
+      if (acceptedForApp) {
+        logger.debug('Skipping suggestion — status already accepted for this application', {
+          applicationId,
+          targetStatus,
+          userId,
+          messageId,
+        });
+        return { status: 'SKIPPED_DUPLICATE_SUGGESTION', existingSuggestion: acceptedForApp };
+      }
     }
 
     // Check if auto-update is permissible based on user settings
