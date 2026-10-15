@@ -156,6 +156,8 @@ export const AutomationPage: React.FC = () => {
     if (isActivelySyncing) {
       const pollInterval = gmailConnected ? 3500 : 5000;
       interval = setInterval(() => {
+        // Skip when tab is hidden — prevents ERR_NETWORK_IO_SUSPENDED
+        if (document.visibilityState === 'hidden') return;
         fetchSuggestions(true);
         fetchIntegrations();
       }, pollInterval);

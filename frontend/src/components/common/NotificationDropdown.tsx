@@ -12,13 +12,12 @@ export const NotificationDropdown: React.FC = () => {
   const navigate = useNavigate();
 
   const fetchNotifications = async () => {
+    // Don't poll while tab is hidden — avoids ERR_NETWORK_IO_SUSPENDED
+    if (document.visibilityState === 'hidden') return;
     try {
       const res = await apiRequest<{ notifications: NotificationItem[]; unreadCount: number }>('/notifications');
       setNotifications(res.notifications || []);
       setUnreadCount(res.unreadCount || 0);
-
-      // Notify the application so review sections update in real-time
-      window.dispatchEvent(new Event('applylog_suggestions_updated'));
     } catch {
       // ignore
     }
